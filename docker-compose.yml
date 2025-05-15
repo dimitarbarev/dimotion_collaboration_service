@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: dimotion-mysql-2
+    environment:
+      MYSQL_DATABASE: dimotion_collaboration_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pass
+      MYSQL_ROOT_PASSWORD: rootpass
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mySQL-init-image/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  app:
+    image: collaboration-service-image:0.0.1
+    container_name: collaboration-service
+    depends_on:
+      - mysql
+    ports:
+      - "8083:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/dimotion_collaboration_db
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: pass
+    restart: on-failure
+
+volumes:
+  mysql-data:
