@@ -9,8 +9,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@CrossOrigin(origins = "*")
 @RestController
-@RequestMapping("/api/textboxes")
+@RequestMapping("/api/private/textboxes")
 @RequiredArgsConstructor
 public class TextboxController {
 

@@ -9,8 +9,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@CrossOrigin(origins = "*")
 @RestController
-@RequestMapping("/api/teams")
+@RequestMapping("/api/private/teams")
 @RequiredArgsConstructor
 public class TeamController {
 

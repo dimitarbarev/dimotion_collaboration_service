@@ -9,8 +9,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@CrossOrigin(origins = "*")
 @RestController
-@RequestMapping("/api/boards")
+@RequestMapping("/api/private/boards")
 @RequiredArgsConstructor
 public class BoardController {
 
@@ -23,6 +24,7 @@ public class BoardController {
 
     @GetMapping("/{id}")
     public ResponseEntity<BoardResponse> getById(@PathVariable Long id) {
+        System.out.println("Trigger the retrieval of a board with id: " + id);
         return boardService.getById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -30,6 +32,8 @@ public class BoardController {
 
     @GetMapping
     public List<BoardResponse> getAll() {
+        System.out.println("Here ar ethe boards passed to the front end:");
+        System.out.println(boardService.getAll());
         return boardService.getAll();
     }
 

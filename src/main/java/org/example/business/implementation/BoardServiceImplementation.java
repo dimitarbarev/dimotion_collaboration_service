@@ -2,6 +2,7 @@ package org.example.business.implementation;
 
 import lombok.RequiredArgsConstructor;
 import org.example.business.BoardService;
+import org.example.business.MessagePublisher;
 import org.example.model.request.BoardRequest;
 import org.example.model.response.BoardResponse;
 import org.example.repository.BoardRepository;
@@ -11,6 +12,7 @@ import org.example.repository.entity.TeamEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -21,6 +23,10 @@ public class BoardServiceImplementation implements BoardService {
 
     private final BoardRepository boardRepository;
     private final TeamRepository teamRepository;
+
+    private final MessagePublisher messagePublisher;
+
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     @Override
     public BoardResponse create(BoardRequest request) {
@@ -38,7 +44,7 @@ public class BoardServiceImplementation implements BoardService {
         return BoardResponse.builder()
                 .id(saved.getId())
                 .title(saved.getTitle())
-                .datetime(saved.getDatetime().toString())
+                .datetime(saved.getDatetime().format(formatter))
                 .teamId(saved.getTeam().getId())
                 .build();
     }
@@ -49,7 +55,7 @@ public class BoardServiceImplementation implements BoardService {
                 .map(board -> BoardResponse.builder()
                         .id(board.getId())
                         .title(board.getTitle())
-                        .datetime(board.getDatetime().toString())
+                        .datetime(board.getDatetime().format(formatter))
                         .teamId(board.getTeam().getId())
                         .build());
     }
@@ -65,5 +71,7 @@ public class BoardServiceImplementation implements BoardService {
     @Override
     public void deleteById(Long id) {
         boardRepository.deleteById(id);
+        System.out.println("Board Service Impl board delete event for ID: " + id);
+        messagePublisher.publishBoardDeleted(id);
     }
 }

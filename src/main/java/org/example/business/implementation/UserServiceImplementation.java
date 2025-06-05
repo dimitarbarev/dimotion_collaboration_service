@@ -1,6 +1,7 @@
 package org.example.business.implementation;
 
 import lombok.RequiredArgsConstructor;
+import org.example.business.MessagePublisher;
 import org.example.business.UserService;
 import org.example.model.request.UserRequest;
 import org.example.model.response.UserResponse;
@@ -16,6 +17,8 @@ import java.util.Optional;
 public class UserServiceImplementation implements UserService {
 
     private final UserRepository userRepository;
+
+    private final MessagePublisher messagePublisher;
 
     @Override
     public UserResponse create(UserRequest request) {
@@ -56,6 +59,9 @@ public class UserServiceImplementation implements UserService {
 
     @Override
     public void deleteById(Long id) {
+        System.out.println("Deletion is triggered in the service.");
+        System.out.println("ID for deletion: " + id);
         userRepository.deleteById(id);
+        messagePublisher.publishUserDeleted(id);
     }
 }

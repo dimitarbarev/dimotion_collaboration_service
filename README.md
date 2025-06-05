@@ -72,6 +72,14 @@ JUnit 5 is used to validate the logic for user, board, team, and textbox interac
 
 - Part of the Dimotion microservice architecture
 
+## 👨🏻‍💻 Changes in the code
+
+```
+./gradlew clean build
+docker compose build --no-cache collaboration-service
+docker compose up
+```
+
 ## 🤝 License
 
 MIT License © [Dimitar Barev](https://github.com/dimitarbarev)

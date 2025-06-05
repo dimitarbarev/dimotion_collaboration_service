@@ -9,8 +9,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@CrossOrigin(origins = "*")
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/private/users")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -35,6 +36,8 @@ public class UserController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
+        System.out.println("Deletion is triggered in hte controller.");
+        System.out.println("ID for deletion: " + id);
         userService.deleteById(id);
         return ResponseEntity.noContent().build();
     }
