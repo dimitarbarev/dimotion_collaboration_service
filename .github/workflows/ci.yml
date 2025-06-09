@@ -66,48 +66,60 @@ jobs:
   zap-scan:
     name: OWASP ZAP Scan via ngrok
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+      - name: Start backend in background
+        run: |
+          chmod +x ./gradlew
+          ./gradlew bootRun &
 
-      - name: Grant execute permission for Gradle wrapper
-        run: chmod +x ./gradlew
-
-      - name: Start backend (in background)
-        run: ./gradlew bootRun &
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq wget tar
 
       - name: Install ngrok
         run: |
-          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
+            | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
+            | sudo tee /etc/apt/sources.list.d/ngrok.list
           sudo apt update && sudo apt install ngrok
 
-      - name: Start ngrok tunnel
+      - name: Expose service via ngrok
+        env:
+          NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
         run: |
-          ngrok config add-authtoken ${{ secrets.NGROK_TOKEN }}
+          ngrok config add-authtoken "$NGROK_TOKEN"
           ngrok http 8083 > ngrok.log &
           sleep 10
+          curl -s http://127.0.0.1:4040/api/tunnels \
+            | jq -r .tunnels[0].public_url \
+            | sed 's/http:/https:/' \
+            > ngrok_url.txt
 
-      - name: Get public ngrok URL
-        id: extract-url
+      - name: Download ZAP v2.16.1
         run: |
-          curl -s http://127.0.0.1:4040/api/tunnels > tunnels.json
-          echo "::set-output name=url::$(jq -r .tunnels[0].public_url tunnels.json)"
+          ZAP_VER=2.16.1
+          wget https://github.com/zaproxy/zaproxy/releases/download/v${ZAP_VER}/ZAP_${ZAP_VER}_Linux.tar.gz
+          tar xzf ZAP_${ZAP_VER}_Linux.tar.gz -C ~
+          chmod +x ~/ZAP_${ZAP_VER}/zap.sh
 
-      - name: Download and unzip OWASP ZAP
+      - name: Run ZAP baseline scan
         run: |
-          wget https://github.com/zaproxy/zaproxy/releases/download/v2.14.0/ZAP_2.14.0_unix.sh -O zap_install.sh
-          chmod +x zap_install.sh
-          ./zap_install.sh -q -dir $HOME/zap
+          NGROK_URL="$(cat ngrok_url.txt)"
+          ~/ZAP_2.16.1/zap.sh -daemon -host 127.0.0.1 -port 8090 -config api.disablekey=true
+          sleep 10
+          ~/ZAP_2.16.1/zap-baseline.py \
+            -t "$NGROK_URL" \
+            -r zap_report.html || true
 
-      - name: Run ZAP Baseline Scan
-        run: |
-          $HOME/zap/zap-baseline.py -t ${{ steps.extract-url.outputs.url }} -r zap_report.html || true
+      - name: Upload ZAP report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: zap_report.html
