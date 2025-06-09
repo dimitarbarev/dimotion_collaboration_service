@@ -66,21 +66,16 @@ jobs:
   zap-scan:
     name: OWASP ZAP Scan
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget jq
-
       - name: Install ngrok
         run: |
           curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
-          | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+            | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
           echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
-          | sudo tee /etc/apt/sources.list.d/ngrok.list
-          sudo apt update && sudo apt install -y ngrok
+            | sudo tee /etc/apt/sources.list.d/ngrok.list
+          sudo apt update && sudo apt install -y ngrok jq wget
 
       - name: Start ngrok tunnel to local backend
         env:
@@ -94,14 +89,14 @@ jobs:
             | sed 's/http:/https:/' \
             > ngrok_url.txt
 
-      - name: Run ZAP Baseline Scan
+      - name: Run ZAP Baseline Scan using official Docker image
         run: |
           export TARGET=$(cat ngrok_url.txt)
           docker run --rm -v $(pwd):/zap/wrk \
-            owasp/zap2docker-stable zap-baseline.py \
+            zaproxy/zap-stable zap-baseline.py \
             -t "$TARGET" -r zap_report.html || true
 
-      - name: Upload ZAP report
+      - name: Upload ZAP report artifact
         uses: actions/upload-artifact@v4
         with:
           name: zap-report
