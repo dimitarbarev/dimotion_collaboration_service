@@ -62,3 +62,47 @@ jobs:
         uses: returntocorp/semgrep-action@v1
         with:
           config: "auto"
+
+  zap-scan:
+    name: OWASP ZAP Scan via ngrok
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for Gradle wrapper
+        run: chmod +x ./gradlew
+
+      - name: Start backend (in background)
+        run: ./gradlew bootRun &
+
+      - name: Install ngrok
+        run: |
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+          sudo apt update && sudo apt install ngrok
+
+      - name: Start ngrok tunnel
+        run: |
+          ngrok config add-authtoken ${{ secrets.NGROK_TOKEN }}
+          ngrok http 8083 > ngrok.log &
+          sleep 10  # Wait for tunnel to initialize
+
+      - name: Get public ngrok URL
+        id: extract-url
+        run: |
+          curl -s http://127.0.0.1:4040/api/tunnels > tunnels.json
+          echo "::set-output name=url::$(jq -r .tunnels[0].public_url tunnels.json)"
+
+      - name: Run OWASP ZAP scan
+        uses: zaproxy/action-full-scan@v0.10.0
+        with:
+          target: ${{ steps.extract-url.outputs.url }}
