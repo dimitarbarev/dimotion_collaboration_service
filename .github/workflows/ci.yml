@@ -64,33 +64,17 @@ jobs:
           config: "auto"
 
   zap-scan:
-    name: OWASP ZAP Scan via ngrok
+    name: OWASP ZAP Scan
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Start backend in background
-        run: |
-          chmod +x ./gradlew
-          ./gradlew bootRun &
-
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y jq wget tar
+          sudo apt-get install -y wget jq
 
-      - name: Install ngrok
-        run: |
-          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
-            | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
-            | sudo tee /etc/apt/sources.list.d/ngrok.list
-          sudo apt update && sudo apt install ngrok
-
-      - name: Expose service via ngrok
+      - name: Start ngrok tunnel to local backend
         env:
           NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
         run: |
@@ -102,23 +86,14 @@ jobs:
             | sed 's/http:/https:/' \
             > ngrok_url.txt
 
-      - name: Download ZAP v2.16.1
+      - name: Run ZAP via Docker (baseline scan)
         run: |
-          ZAP_VER=2.16.1
-          wget https://github.com/zaproxy/zaproxy/releases/download/v${ZAP_VER}/ZAP_${ZAP_VER}_Linux.tar.gz
-          tar xzf ZAP_${ZAP_VER}_Linux.tar.gz -C ~
-          chmod +x ~/ZAP_${ZAP_VER}/zap.sh
+          export TARGET=$(cat ngrok_url.txt)
+          docker run --rm -v $(pwd):/zap/wrk \
+            ghcr.io/zaproxy/zap-baseline:latest \
+            -t "$TARGET" -r zap_report.html || true
 
-      - name: Run ZAP baseline scan
-        run: |
-          NGROK_URL="$(cat ngrok_url.txt)"
-          ~/ZAP_2.16.1/zap.sh -daemon -host 127.0.0.1 -port 8090 -config api.disablekey=true
-          sleep 10
-          ~/ZAP_2.16.1/zap-baseline.py \
-            -t "$NGROK_URL" \
-            -r zap_report.html || true
-
-      - name: Upload ZAP report artifact
+      - name: Upload ZAP report
         uses: actions/upload-artifact@v4
         with:
           name: zap-report
