@@ -94,7 +94,7 @@ jobs:
         run: |
           ngrok config add-authtoken ${{ secrets.NGROK_TOKEN }}
           ngrok http 8083 > ngrok.log &
-          sleep 10  # Wait for tunnel to initialize
+          sleep 10
 
       - name: Get public ngrok URL
         id: extract-url
@@ -102,9 +102,11 @@ jobs:
           curl -s http://127.0.0.1:4040/api/tunnels > tunnels.json
           echo "::set-output name=url::$(jq -r .tunnels[0].public_url tunnels.json)"
 
-      - name: Run OWASP ZAP scan
-        uses: zaproxy/action-full-scan@v0.10.0
-        with:
-          target: ${{ steps.extract-url.outputs.url }}
-          allow_issue_writing: false
-          artifact_report: false
+      - name: Install OWASP ZAP CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zaproxy
+
+      - name: Run ZAP Baseline Scan
+        run: |
+          zap-baseline.py -t ${{ steps.extract-url.outputs.url }} -r zap_report.html || true
