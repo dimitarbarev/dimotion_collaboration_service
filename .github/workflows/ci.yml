@@ -102,11 +102,12 @@ jobs:
           curl -s http://127.0.0.1:4040/api/tunnels > tunnels.json
           echo "::set-output name=url::$(jq -r .tunnels[0].public_url tunnels.json)"
 
-      - name: Install OWASP ZAP CLI
+      - name: Download and unzip OWASP ZAP
         run: |
-          sudo apt-get update
-          sudo apt-get install -y zaproxy
+          wget https://github.com/zaproxy/zaproxy/releases/download/v2.14.0/ZAP_2.14.0_unix.sh -O zap_install.sh
+          chmod +x zap_install.sh
+          ./zap_install.sh -q -dir $HOME/zap
 
       - name: Run ZAP Baseline Scan
         run: |
-          zap-baseline.py -t ${{ steps.extract-url.outputs.url }} -r zap_report.html || true
+          $HOME/zap/zap-baseline.py -t ${{ steps.extract-url.outputs.url }} -r zap_report.html || true
