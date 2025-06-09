@@ -107,4 +107,4 @@ jobs:
         with:
           target: ${{ steps.extract-url.outputs.url }}
           allow_issue_writing: false
-          artifact_name: zap-scan-report
+          artifact_report: false
