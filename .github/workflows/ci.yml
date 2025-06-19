@@ -51,19 +51,30 @@ jobs:
       - name: Run tests
         run: ./gradlew test
 
+      - name: Generate JaCoCo test report
+        run: ./gradlew jacocoTestReport
+
+      - name: Upload JaCoCo report to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: build/reports/jacoco/test/jacocoTestReport.xml
+          fail_ci_if_error: true
+          verbose: true
+
       - name: Build Docker image
         run: docker build -t collab-service:latest .
 
       - name: Run Trivy vulnerability scan
         uses: aquasecurity/trivy-action@0.31.0
         with:
+          scan-type: image
           image-ref: collab-service:latest
           format: table
           ignore-unfixed: true
           exit-code: 0
 
   gitleaks-scan:
-    name: Gitleaks Secret Scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -75,7 +86,6 @@ jobs:
           args: detect --source=. --report-path=gitleaks.json --report-format=json
 
   semgrep-scan:
-    name: Semgrep Code Scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -87,9 +97,7 @@ jobs:
           config: "auto"
 
   dependency-check:
-    name: Dependency Vulnerability Scan
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -108,25 +116,14 @@ jobs:
           name: dependency-check-report
           path: dependency-check-report
 
-  codecov:
-    name: Upload coverage reports to Codecov
-    uses: codecov/codecov-action@v5
-    with:
-      token: ${{ secrets.CODECOV_TOKEN }}
-      slug: dimitarbarev/dimotion_collaboration_service
-
   zap-scan:
-    name: OWASP ZAP Scan
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
     steps:
       - name: Install ngrok
         run: |
-          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
-            | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
-            | sudo tee /etc/apt/sources.list.d/ngrok.list
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
           sudo apt update && sudo apt install -y ngrok jq wget
 
       - name: Start ngrok tunnel to local backend
@@ -136,17 +133,12 @@ jobs:
           ngrok config add-authtoken "$NGROK_TOKEN"
           ngrok http 8083 > ngrok.log &
           sleep 10
-          curl -s http://127.0.0.1:4040/api/tunnels \
-            | jq -r .tunnels[0].public_url \
-            | sed 's/http:/https:/' \
-            > ngrok_url.txt
+          curl -s http://127.0.0.1:4040/api/tunnels | jq -r .tunnels[0].public_url | sed 's/http:/https:/' > ngrok_url.txt
 
-      - name: Run ZAP Baseline Scan using official Docker image
+      - name: Run ZAP Baseline Scan using Docker
         run: |
           export TARGET=$(cat ngrok_url.txt)
-          docker run --rm -v $(pwd):/zap/wrk \
-            zaproxy/zap-stable zap-baseline.py \
-            -t "$TARGET" -r zap_report.html -w /zap/wrk || true
+          docker run --rm -v $(pwd):/zap/wrk zaproxy/zap-stable zap-baseline.py -t "$TARGET" -r zap_report.html -w /zap/wrk || true
 
       - name: Upload ZAP report artifact
         uses: actions/upload-artifact@v4
