@@ -23,7 +23,7 @@ services:
 
   collaboration-service:
     build:
-      context: ./collaboration_service_java
+      context: .                      # fixed: project root is correct
       dockerfile: Dockerfile
     container_name: collaboration-service
     depends_on:
@@ -32,15 +32,15 @@ services:
     ports:
       - "8083:8080"
     environment:
-      SPRING_DATASOURCE_URL: ""
-      SPRING_DATASOURCE_USERNAME: ""
-      SPRING_DATASOURCE_PASSWORD: ""
-      SPRING_RABBITMQ_HOST: ""
-      SPRING_RABBITMQ_PORT: ""
-      SPRING_RABBITMQ_USERNAME: ""
-      SPRING_RABBITMQ_PASSWORD: ""
-      AUTH0_ISSUER_URI: ""
-      AUTH0_JWKS_URI: ""
+      SPRING_DATASOURCE_URL: ${COLLAB_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${COLLAB_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${COLLAB_DATASOURCE_PASSWORD}
+      SPRING_RABBITMQ_HOST: ${SPRING_RABBITMQ_HOST}
+      SPRING_RABBITMQ_PORT: ${SPRING_RABBITMQ_PORT}
+      SPRING_RABBITMQ_USERNAME: ${SPRING_RABBITMQ_USERNAME}
+      SPRING_RABBITMQ_PASSWORD: ${SPRING_RABBITMQ_PASSWORD}
+      AUTH0_ISSUER_URI: ${AUTH0_ISSUER_URI}
+      AUTH0_JWKS_URI: ${AUTH0_JWKS_URI}
 
 volumes:
   mysql-collab-data:
