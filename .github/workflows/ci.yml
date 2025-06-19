@@ -54,11 +54,13 @@ jobs:
       - name: Generate JaCoCo test report
         run: ./gradlew jacocoTestReport
 
+      - name: Debug JaCoCo output paths
+        run: find build -type f
+
       - name: Upload JaCoCo report to Codecov
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: build/reports/jacoco/test/jacocoTestReport.xml
           fail_ci_if_error: true
           verbose: true
 
