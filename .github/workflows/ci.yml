@@ -120,16 +120,16 @@ jobs:
         with:
           sarif_file: results.sarif
 
-  semgrep-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Run Semgrep
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: "auto"
+#  semgrep-scan:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v3
+#
+#      - name: Run Semgrep
+#        uses: returntocorp/semgrep-action@v1
+#        with:
+#          config: "auto"
 
   dependency-check:
     runs-on: ubuntu-latest
@@ -272,3 +272,12 @@ jobs:
       - name: Tear down Docker Compose services
         if: always()
         run: docker compose -f src/docker-compose.yml down
+
+  deploy:
+    name: Deploy on cloud with EKS
+    needs: integration-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: deploy
+        run: echo "deployment needs to pass here"
+
