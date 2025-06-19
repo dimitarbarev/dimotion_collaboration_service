@@ -127,16 +127,21 @@ jobs:
 
 
 
-  gitleaks-scan:
+  gitleaks:
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Run Gitleaks
+      - uses: actions/checkout@v3
+      - name: Run Gitleaks to detect secrets
         uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
         with:
-          args: detect --source=. --report-path=gitleaks.json --report-format=json
+          args: detect --redact -v --report-format=sarif --report-path=results.sarif
+      - name: Upload Gitleaks SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
 
   semgrep-scan:
     runs-on: ubuntu-latest
