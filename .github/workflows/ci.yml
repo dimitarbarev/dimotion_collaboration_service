@@ -9,6 +9,7 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+
     env:
       SPRING_RABBITMQ_HOST: ${{ secrets.SPRING_RABBITMQ_HOST }}
       SPRING_RABBITMQ_PORT: ${{ secrets.SPRING_RABBITMQ_PORT }}
@@ -22,12 +23,17 @@ jobs:
       ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-java@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
-      - uses: actions/cache@v3
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v3
         with:
           path: |
             ~/.gradle/caches
@@ -35,15 +41,26 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             gradle-${{ runner.os }}-
-      - run: chmod +x ./gradlew
-      - run: ./gradlew build
-      - run: ./gradlew jacocoTestReport
-      - run: find build -type f
-      - run: find . -type f
+
+      - name: Grant execute permission for Gradle wrapper
+        run: chmod +x ./gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew build
+
+      - name: Generate JaCoCo test report
+        run: ./gradlew jacocoTestReport
+
+      - name: Debug JaCoCo output paths
+        run: find build -type f
+
+      - name: List all files for debugging
+        run: find . -type f
 
   integration-test:
     runs-on: ubuntu-latest
     needs: build-and-test
+
     env:
       SPRING_RABBITMQ_HOST: ${{ secrets.SPRING_RABBITMQ_HOST }}
       SPRING_RABBITMQ_PORT: ${{ secrets.SPRING_RABBITMQ_PORT }}
@@ -57,22 +74,35 @@ jobs:
       ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-java@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
-      - run: chmod +x ./gradlew
-      - run: ./gradlew bootRun &
-      - run: |
+
+      - name: Grant execute permission for Gradle wrapper
+        run: chmod +x ./gradlew
+
+      - name: Start Spring Boot app in background
+        run: ./gradlew bootRun &
+
+      - name: Wait for app to be ready
+        run: |
           echo "Waiting for app to start on port 8083..."
           for i in {1..30}; do
             nc -z localhost 8083 && echo "App is up!" && break
             sleep 2
           done
-      - run: ./gradlew integrationTest
-      - run: pkill -f 'org.springframework.boot.loader.JarLauncher' || true
+
+      - name: Run integration tests
+        run: ./gradlew integrationTest
+
+      - name: Stop Spring Boot app
         if: always()
+        run: pkill -f 'org.springframework.boot.loader.JarLauncher' || true
 
   gitleaks:
     runs-on: ubuntu-latest
@@ -80,57 +110,125 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v3
-      - uses: gitleaks/gitleaks-action@v2
+      - name: Run Gitleaks to detect secrets
+        uses: gitleaks/gitleaks-action@v2
         continue-on-error: true
         with:
           args: detect --redact -v --report-format=sarif --report-path=results.sarif
-      - uses: github/codeql-action/upload-sarif@v3
+      - name: Upload Gitleaks SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: results.sarif
 
   semgrep-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: returntocorp/semgrep-action@v1
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
         with:
           config: "auto"
 
   dependency-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: dependency-check/Dependency-Check_Action@main
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run OWASP Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@main
         with:
           project: "Collaboration Service"
           path: "."
           format: "HTML"
           out: "dependency-check-report"
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload Dependency-Check report
+        uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
           path: dependency-check-report
 
+  build-and-push-unscanned-image:
+    name: Build and Push Unscanned Image
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Grant execute permission for Gradle wrapper
+        run: chmod +x ./gradlew
+
+      - name: Build JAR for Docker packaging
+        run: ./gradlew bootJar
+
+      - name: Verify JAR presence
+        run: |
+          echo "Listing contents of build/libs:"
+          ls -lh build/libs/
+          find build/libs/ -name "*.jar" -print -quit || { echo "JAR not found!"; exit 1; }
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image (unscanned version)
+        run: docker build -t collab-service:unscanned .
+
+      - name: Tag image for Docker Hub push
+        run: docker tag collab-service:unscanned ${{ secrets.DOCKERHUB_USERNAME }}/collab-service:unscanned
+
+      - name: Push unscanned image to Docker Hub
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/collab-service:unscanned
+
   zap-scan:
     name: OWASP ZAP Scan
     runs-on: ubuntu-latest
-    needs: build-and-test
+    needs: build-and-push-unscanned-image
     timeout-minutes: 15
+
     permissions:
       contents: read
       issues: write
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-java@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
         with:
           distribution: "temurin"
           java-version: "17"
 
-      - name: Build Docker image for scan
-        run: docker build -t collab-service:local-scan .
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Start backend using Docker Compose
+      - name: Pull unscanned Docker image
+        run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/collab-service:unscanned
+
+      - name: Tag image for local use
+        run: docker tag ${{ secrets.DOCKERHUB_USERNAME }}/collab-service:unscanned collab-service:local-scan
+
+      - name: Start backend with Docker Compose
         run: |
           docker compose -f src/docker-compose.yml up -d
           sleep 30
@@ -153,7 +251,7 @@ jobs:
             fi
           done
 
-      - name: Set permissions for ZAP to write reports
+      - name: Prepare directory permissions for ZAP
         run: sudo chmod -R 777 .
 
       - name: Run OWASP ZAP Baseline Scan
@@ -171,6 +269,6 @@ jobs:
             zap_report.json
         continue-on-error: true
 
-      - name: Tear down services
+      - name: Tear down Docker Compose services
         if: always()
         run: docker compose -f src/docker-compose.yml down
