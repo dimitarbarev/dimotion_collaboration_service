@@ -108,6 +108,13 @@ jobs:
           name: dependency-check-report
           path: dependency-check-report
 
+  codecov:
+    name: Upload coverage reports to Codecov
+    uses: codecov/codecov-action@v5
+    with:
+      token: ${{ secrets.CODECOV_TOKEN }}
+      slug: dimitarbarev/dimotion_collaboration_service
+
   zap-scan:
     name: OWASP ZAP Scan
     runs-on: ubuntu-latest
