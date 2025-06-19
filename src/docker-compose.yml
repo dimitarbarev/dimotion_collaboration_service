@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: dimotion-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  mysql-collab:
+    image: mysql:8.0
+    container_name: dimotion-mysql-collab
+    environment:
+      MYSQL_DATABASE: dimotion_collaboration_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pass
+      MYSQL_ROOT_PASSWORD: rootpass
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql-collab-data:/var/lib/mysql
+
+  collaboration-service:
+    build:
+      context: ./collaboration_service_java
+      dockerfile: Dockerfile
+    container_name: collaboration-service
+    depends_on:
+      - mysql-collab
+      - rabbitmq
+    ports:
+      - "8083:8080"
+    environment:
+      SPRING_DATASOURCE_URL: ""
+      SPRING_DATASOURCE_USERNAME: ""
+      SPRING_DATASOURCE_PASSWORD: ""
+      SPRING_RABBITMQ_HOST: ""
+      SPRING_RABBITMQ_PORT: ""
+      SPRING_RABBITMQ_USERNAME: ""
+      SPRING_RABBITMQ_PASSWORD: ""
+      AUTH0_ISSUER_URI: ""
+      AUTH0_JWKS_URI: ""
+
+volumes:
+  mysql-collab-data:
