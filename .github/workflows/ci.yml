@@ -57,10 +57,16 @@ jobs:
       - name: Debug JaCoCo output paths
         run: find build -type f
 
+      - name: List all files for debugging
+        run: find . -type f
+
       - name: Upload JaCoCo report to Codecov
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: |
+            build/reports/jacoco/test/jacocoTestReport.xml
+            build/reports/jacoco/testCodeCoverageReport.xml
           fail_ci_if_error: true
           verbose: true
 
