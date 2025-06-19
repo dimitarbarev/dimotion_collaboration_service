@@ -2,6 +2,7 @@ package org.example.repository.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.example.security.EncryptionUtil;
 
 import java.util.Set;
 
@@ -13,12 +14,11 @@ import java.util.Set;
 @Entity
 public class UserEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(nullable = false, unique = true)
+    private String id; // this holds Auth0's sub
 
     private String name;
     private String email;
-    private String password;
 
     @ManyToMany
     @JoinTable(
@@ -35,5 +35,13 @@ public class UserEntity {
             inverseJoinColumns = @JoinColumn(name = "board_id")
     )
     private Set<BoardEntity> boards;
+
+    public String getEmail() {
+        return EncryptionUtil.decrypt(this.email);
+    }
+
+    public void setEmail(String email) {
+        this.email = EncryptionUtil.encrypt(email);
+    }
 }
 

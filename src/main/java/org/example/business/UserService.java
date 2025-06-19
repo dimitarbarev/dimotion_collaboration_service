@@ -8,7 +8,7 @@ import java.util.Optional;
 
 public interface UserService {
     UserResponse create(UserRequest request);
-    Optional<UserResponse> getById(Long id);
+    Optional<UserResponse> getById(String id);
     List<UserResponse> getAll();
-    void deleteById(Long id);
+    void deleteById(String id);
 }

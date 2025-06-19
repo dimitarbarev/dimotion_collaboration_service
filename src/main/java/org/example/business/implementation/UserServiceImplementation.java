@@ -23,10 +23,11 @@ public class UserServiceImplementation implements UserService {
     @Override
     public UserResponse create(UserRequest request) {
         UserEntity user = UserEntity.builder()
+                .id(request.getId())
                 .name(request.getName())
-                .email(request.getEmail())
-                .password(request.getPassword())
                 .build();
+        // encryption is applied to the email
+        user.setEmail(request.getEmail());
 
         UserEntity saved = userRepository.save(user);
         return UserResponse.builder()
@@ -37,7 +38,7 @@ public class UserServiceImplementation implements UserService {
     }
 
     @Override
-    public Optional<UserResponse> getById(Long id) {
+    public Optional<UserResponse> getById(String id) {
         return userRepository.findById(id)
                 .map(user -> UserResponse.builder()
                         .id(user.getId())
@@ -58,7 +59,7 @@ public class UserServiceImplementation implements UserService {
     }
 
     @Override
-    public void deleteById(Long id) {
+    public void deleteById(String id) {
         System.out.println("Deletion is triggered in the service.");
         System.out.println("ID for deletion: " + id);
         userRepository.deleteById(id);

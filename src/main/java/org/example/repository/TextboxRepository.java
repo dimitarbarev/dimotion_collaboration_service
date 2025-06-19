@@ -9,5 +9,5 @@ import java.util.List;
 @Repository
 public interface TextboxRepository extends JpaRepository<TextboxEntity, Long> {
     List<TextboxEntity> findByBoardId(Long boardId);
-    List<TextboxEntity> findByUserId(Long userId);
+    List<TextboxEntity> findByUserId(String userId);
 }

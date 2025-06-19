@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/private/teams")
 @RequiredArgsConstructor
+@CrossOrigin(origins="*")
 public class TeamController {
 
     private final TeamService teamService;

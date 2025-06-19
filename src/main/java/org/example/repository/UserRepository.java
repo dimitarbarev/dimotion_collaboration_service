@@ -6,6 +6,6 @@ import org.example.repository.entity.UserEntity;
 
 
 @Repository
-public interface UserRepository extends JpaRepository<UserEntity, Long> {
+public interface UserRepository extends JpaRepository<UserEntity, String> {
     boolean existsByEmail(String email);
 }

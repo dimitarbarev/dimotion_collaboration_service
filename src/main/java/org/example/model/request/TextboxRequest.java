@@ -11,5 +11,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TextboxRequest {
     private Long boardId;
-    private Long userId;
+    private String userId;
 }

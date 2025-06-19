@@ -3,7 +3,7 @@ package org.example.business.implementation;
 import lombok.RequiredArgsConstructor;
 import org.example.business.TextboxService;
 import org.example.model.request.TextboxRequest;
-import org.example.model.response.TextboxResponse;
+import org.example.model.response.TextBoxResponse;
 import org.example.repository.BoardRepository;
 import org.example.repository.TextboxRepository;
 import org.example.repository.UserRepository;
@@ -24,7 +24,7 @@ public class TextboxServiceImplementation implements TextboxService {
     private final UserRepository userRepository;
 
     @Override
-    public TextboxResponse create(TextboxRequest request) {
+    public TextBoxResponse create(TextboxRequest request) {
         BoardEntity board = boardRepository.findById(request.getBoardId())
                 .orElseThrow(() -> new RuntimeException("Board not found"));
         UserEntity user = userRepository.findById(request.getUserId())
@@ -37,7 +37,7 @@ public class TextboxServiceImplementation implements TextboxService {
 
         TextboxEntity saved = textboxRepository.save(textbox);
 
-        return TextboxResponse.builder()
+        return TextBoxResponse.builder()
                 .id(saved.getId())
                 .boardId(saved.getBoard().getId())
                 .userId(saved.getUser().getId())
@@ -45,9 +45,9 @@ public class TextboxServiceImplementation implements TextboxService {
     }
 
     @Override
-    public Optional<TextboxResponse> getById(Long id) {
+    public Optional<TextBoxResponse> getById(Long id) {
         return textboxRepository.findById(id).map(tb ->
-                TextboxResponse.builder()
+                TextBoxResponse.builder()
                         .id(tb.getId())
                         .boardId(tb.getBoard().getId())
                         .userId(tb.getUser().getId())
@@ -55,9 +55,9 @@ public class TextboxServiceImplementation implements TextboxService {
     }
 
     @Override
-    public List<TextboxResponse> getAll() {
+    public List<TextBoxResponse> getAll() {
         return textboxRepository.findAll().stream()
-                .map(tb -> TextboxResponse.builder()
+                .map(tb -> TextBoxResponse.builder()
                         .id(tb.getId())
                         .boardId(tb.getBoard().getId())
                         .userId(tb.getUser().getId())

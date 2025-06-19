@@ -10,6 +10,18 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    env:
+      SPRING_RABBITMQ_HOST: ${{ secrets.SPRING_RABBITMQ_HOST }}
+      SPRING_RABBITMQ_PORT: ${{ secrets.SPRING_RABBITMQ_PORT }}
+      SPRING_RABBITMQ_USERNAME: ${{ secrets.SPRING_RABBITMQ_USERNAME }}
+      SPRING_RABBITMQ_PASSWORD: ${{ secrets.SPRING_RABBITMQ_PASSWORD }}
+      AUTH0_ISSUER_URI: ${{ secrets.AUTH0_ISSUER_URI }}
+      AUTH0_JWKS_URI: ${{ secrets.AUTH0_JWKS_URI }}
+      COLLAB_DATASOURCE_URL: ${{ secrets.COLLAB_DATASOURCE_URL }}
+      COLLAB_DATASOURCE_USERNAME: ${{ secrets.COLLAB_DATASOURCE_USERNAME }}
+      COLLAB_DATASOURCE_PASSWORD: ${{ secrets.COLLAB_DATASOURCE_PASSWORD }}
+      ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3

@@ -13,5 +13,5 @@ import java.util.Set;
 @AllArgsConstructor
 public class TeamRequest {
     private String name;
-    private Set<Long> userIds;
+    private Set<String> userIds;
 }

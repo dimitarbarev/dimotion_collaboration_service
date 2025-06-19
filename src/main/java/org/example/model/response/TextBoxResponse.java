@@ -9,8 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TextboxResponse {
+public class TextBoxResponse {
     private Long id;
     private Long boardId;
-    private Long userId;
+    private String userId;
 }

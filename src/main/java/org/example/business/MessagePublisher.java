@@ -18,7 +18,7 @@ public class MessagePublisher {
         rabbitTemplate.convertAndSend("board.delete", message);
     }
 
-    public void publishUserDeleted(Long userId) {
+    public void publishUserDeleted(String userId) {
         System.out.println("Sending user delete event for ID: " + userId);
         String message = String.valueOf(userId);
         rabbitTemplate.convertAndSend("user.delete", message);
