@@ -51,6 +51,17 @@ jobs:
       - name: Run tests
         run: ./gradlew test
 
+      - name: Build Docker image
+        run: docker build -t collab-service:latest .
+
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@v0.16.1
+        with:
+          image-ref: collab-service:latest
+          format: table
+          ignore-unfixed: true
+          exit-code: 0
+
   gitleaks-scan:
     name: Gitleaks Secret Scan
     runs-on: ubuntu-latest
