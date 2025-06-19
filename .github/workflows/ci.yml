@@ -55,7 +55,7 @@ jobs:
         run: docker build -t collab-service:latest .
 
       - name: Run Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@0.31.0
         with:
           image-ref: collab-service:latest
           format: table
