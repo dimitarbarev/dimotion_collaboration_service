@@ -125,8 +125,6 @@ jobs:
       - name: Run integration tests
         run: ./gradlew integrationTest
 
-
-
   gitleaks:
     runs-on: ubuntu-latest
     permissions:
@@ -175,31 +173,105 @@ jobs:
           path: dependency-check-report
 
   zap-scan:
+    name: OWASP ZAP Scan
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    needs: build-and-test # Ensure the service builds and passes unit tests first
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+      issues: write
+
     steps:
-      - name: Install ngrok
-        run: |
-          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-          sudo apt update && sudo apt install -y ngrok jq wget
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Start ngrok tunnel to local backend
-        env:
-          NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
-        run: |
-          ngrok config add-authtoken "$NGROK_TOKEN"
-          ngrok http 8083 > ngrok.log &
-          sleep 10
-          curl -s http://127.0.0.1:4040/api/tunnels | jq -r .tunnels[0].public_url | sed 's/http:/https:/' > ngrok_url.txt
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: "temurin"
+          java-version: "17"
 
-      - name: Run ZAP Baseline Scan using Docker
-        run: |
-          export TARGET=$(cat ngrok_url.txt)
-          docker run --rm -v $(pwd):/zap/wrk zaproxy/zap-stable zap-baseline.py -t "$TARGET" -r zap_report.html -w /zap/wrk || true
+      - name: Log in to Docker Hub (if using remote image)
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Upload ZAP report artifact
+      - name: Build and tag Docker image locally
+        run: docker build -t collab-service:local-scan .
+
+      - name: Start backend with Docker Compose
+        run: |
+          docker compose -f src/docker-compose.yml up -d
+          sleep 30
+
+      - name: Wait for health endpoint to be ready
+        run: |
+          echo "Waiting for health endpoint..."
+          for i in `seq 1 30`; do
+            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8083/api/public/test)
+            if [ "$STATUS_CODE" -eq 200 ]; then
+              echo "Health check passed."
+              break
+            else
+              echo "Attempt $i: Got $STATUS_CODE. Retrying..."
+              sleep 5
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Timeout waiting for health endpoint."
+              exit 1
+            fi
+          done
+
+      - name: Prepare directory permissions for ZAP
+        run: sudo chmod -R 777 .
+
+      - name: Run OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: http://localhost:8083
+          fail_action: false
+
+      - name: Upload ZAP Scan Report
         uses: actions/upload-artifact@v4
         with:
           name: zap-report
-          path: zap_report.html
+          path: |
+            zap_report.html
+            zap_report.json
+        continue-on-error: true
+
+      - name: Tear down Docker Compose services
+        if: always()
+        run: docker compose -f src/docker-compose.yml down
+
+#  zap-scan:
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 10
+#    steps:
+#      - name: Install ngrok
+#        run: |
+#          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+#          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+#          sudo apt update && sudo apt install -y ngrok jq wget
+#
+#      - name: Start ngrok tunnel to local backend
+#        env:
+#          NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
+#        run: |
+#          ngrok config add-authtoken "$NGROK_TOKEN"
+#          ngrok http 8083 > ngrok.log &
+#          sleep 10
+#          curl -s http://127.0.0.1:4040/api/tunnels | jq -r .tunnels[0].public_url | sed 's/http:/https:/' > ngrok_url.txt
+#
+#      - name: Run ZAP Baseline Scan using Docker
+#        run: |
+#          export TARGET=$(cat ngrok_url.txt)
+#          docker run --rm -v $(pwd):/zap/wrk zaproxy/zap-stable zap-baseline.py -t "$TARGET" -r zap_report.html -w /zap/wrk || true
+#
+#      - name: Upload ZAP report artifact
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: zap-report
+#          path: zap_report.html
