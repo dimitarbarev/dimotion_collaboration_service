@@ -75,6 +75,28 @@ jobs:
         with:
           config: "auto"
 
+  dependency-check:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run OWASP Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: "Collaboration Service"
+          path: "."
+          format: "HTML"
+          out: "dependency-check-report"
+
+      - name: Upload Dependency-Check report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: dependency-check-report
+
   zap-scan:
     name: OWASP ZAP Scan
     runs-on: ubuntu-latest
